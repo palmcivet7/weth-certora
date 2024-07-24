@@ -12,3 +12,6 @@ docs/
 
 # Dotenv file
 .env
+
+.notes.md
+.certora_internal
