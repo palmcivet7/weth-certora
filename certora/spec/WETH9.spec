@@ -10,16 +10,16 @@ methods {
 /*//////////////////////////////////////////////////////////////
                              GHOSTS
 //////////////////////////////////////////////////////////////*/
+ghost mathint g_sumOfBalances {
+    init_state axiom g_sumOfBalances == to_mathint(nativeBalances[currentContract]);
+}
+
 ghost mathint g_depositSum {
     init_state axiom g_depositSum == to_mathint(nativeBalances[currentContract]);
 }
 
 ghost mathint g_withdrawSum {
     init_state axiom g_withdrawSum == 0;
-}
-
-ghost mathint g_sumOfBalances {
-    init_state axiom g_sumOfBalances == to_mathint(nativeBalances[currentContract]);
 }
 
 /*//////////////////////////////////////////////////////////////
