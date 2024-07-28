@@ -7,7 +7,6 @@ methods {
     function totalSupply() external returns(uint256) envfree;
     function balanceOf(address) external returns (uint256) envfree;
     function allowance(address, address) external returns (uint256) envfree;
-    function approve(address, uint256) external returns (bool);
 }
 
 /*//////////////////////////////////////////////////////////////
