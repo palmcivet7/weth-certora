@@ -144,7 +144,6 @@ rule transferIntegrity(address recipient, uint amount) {
     mathint balance_sender_after = balanceOf(sender);
     mathint balance_recip_after = balanceOf(recipient);
 
-
     assert recipient != sender => balance_sender_after == balance_sender_before - amount,
         "transfer must decrease sender's balance by amount";
     assert recipient != sender => balance_recip_after == balance_recip_before + amount,
