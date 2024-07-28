@@ -16,6 +16,24 @@ methods {
 //////////////////////////////////////////////////////////////*/
 definition ZERO_ADDRESS() returns address = 0x0000000000000000000000000000000000000000;
 
+definition canIncreaseAllowance(method f) returns bool = 
+	f.selector == sig:approve(address,uint256).selector;
+
+definition cantDecreaseAllowance(method f) returns bool = 
+	f.selector != sig:approve(address,uint256).selector || 
+	f.selector != sig:transferFrom(address,address,uint256).selector;
+
+definition canDecreaseBalance(method f) returns bool = 
+	f.selector == sig:transfer(address,uint256).selector ||
+	f.selector == sig:transferFrom(address,address,uint256).selector ||
+    f.selector == sig:withdraw(uint).selector;
+
+definition cantDecreaseBalance(method f) returns bool = 
+	f.selector != sig:transfer(address,uint256).selector ||
+	f.selector != sig:transferFrom(address,address,uint256).selector ||
+    f.selector != sig:withdraw(uint).selector;
+
+
 /*//////////////////////////////////////////////////////////////
                              GHOSTS
 //////////////////////////////////////////////////////////////*/
@@ -55,11 +73,33 @@ invariant totalSupplyIsSumOfBalances()
         }
     }
 
-invariant totalSupplyIsDepositMinusWithdraw()
+invariant solvencyDeposits()
     to_mathint(totalSupply()) == g_depositSum - g_withdrawSum
     {
         preserved with (env e) {
           require e.msg.sender != currentContract;
+        }
+    }
+
+invariant singleDepositorBalanceLteTotalSupply(address account)
+    balanceOf(account) <= totalSupply()
+    {
+        preserved with (env e1) {
+          require e1.msg.sender != currentContract;
+        }
+        preserved transfer(address to, uint256 amount) with (env e2) {
+            require e2.msg.sender == account;
+            require balanceOf(e2.msg.sender) >= amount;
+        }
+        preserved transferFrom(address from, address to, uint256 amount) with (env e3) {
+            require from == account;
+            require balanceOf(from) >= amount;
+            if (e3.msg.sender != from) require allowance(from, e3.msg.sender) >= amount;
+        }
+        preserved withdraw(uint256 amount) with (env e4) {
+            require e4.msg.sender == account;
+            require balanceOf(e4.msg.sender) >= amount;
+            require nativeBalances[currentContract] >= amount;
         }
     }
 
@@ -94,16 +134,16 @@ invariant depositorBalancesLteTotalSupply(address alice, address bob)
 rule transferIntegrity(address recipient, uint amount) {
     env e;
     require e.msg.sender != currentContract;
+    address sender = e.msg.sender;
     
-    mathint balance_sender_before = balanceOf(e.msg.sender);
+    mathint balance_sender_before = balanceOf(sender);
     mathint balance_recip_before = balanceOf(recipient);
 
     transfer(e, recipient, amount);
 
-    mathint balance_sender_after = balanceOf(e.msg.sender);
+    mathint balance_sender_after = balanceOf(sender);
     mathint balance_recip_after = balanceOf(recipient);
 
-    address sender = e.msg.sender;
 
     assert recipient != sender => balance_sender_after == balance_sender_before - amount,
         "transfer must decrease sender's balance by amount";
@@ -120,8 +160,6 @@ rule transferReverts(address recipient, uint amount) {
     require balanceOf(e.msg.sender) < amount;
 
     transfer@withrevert(e, recipient, amount);
-    // `lastReverted` refers to last call made, so if we are making another call after the method we expected to revert,
-    // consider saving the @withrevert result in a boolean and checking it later
     assert lastReverted;
 }
 
@@ -188,23 +226,33 @@ rule transferFromDoesntRevert(address owner, address recipient, uint amount) {
     assert !lastReverted;
 }
 
-/// @notice only the holder/owner of the token can approve it for spending
-rule allowanceIntegrity(address holder, address spender) {
+/// @notice only the owner of the token can approve it for spending
+rule allowanceIntegrity(address owner, address spender) {
     env e;
     method f;
     calldataarg args;
     require e.msg.sender != currentContract;
 
-    mathint startingAllowance = allowance(holder, spender);
-
+    mathint startingAllowance = allowance(owner, spender);
     f(e, args); // was: approve@withrevert(e, spender, amount);
+    mathint endingAllowance = allowance(owner, spender);
 
-    mathint endingAllowance = allowance(holder, spender);
+    assert endingAllowance > startingAllowance => e.msg.sender == owner;
+    assert endingAllowance > startingAllowance => canIncreaseAllowance(f);
+    assert endingAllowance == startingAllowance => cantDecreaseAllowance(f);
+}
 
-    assert endingAllowance > startingAllowance => e.msg.sender == holder;
-    assert endingAllowance > startingAllowance => f.selector == sig:approve(address,uint).selector;
-    assert endingAllowance == startingAllowance => (
-        f.selector != sig:approve(address,uint).selector ||
-        f.selector != sig:transferFrom(address,address,uint).selector
-    );
+/// @notice balance amounts should only decrease if transfers or withdraws happen
+rule balanceOfIntegrity(address owner) {
+    env e;
+    method f;
+    calldataarg args;
+    require e.msg.sender != currentContract;
+
+    mathint startingBalance = balanceOf(owner);
+    f(e, args);
+    mathint endingBalance = balanceOf(owner);
+
+    assert endingBalance < startingBalance => canDecreaseBalance(f);
+    assert endingBalance >= startingBalance => cantDecreaseBalance(f);
 }
