@@ -63,6 +63,30 @@ invariant totalSupplyIsDepositMinusWithdraw()
         }
     }
 
+invariant depositorBalancesLteTotalSupply(address alice, address bob)
+    balanceOf(alice) + balanceOf(bob) <= to_mathint(totalSupply())
+    {
+        preserved with (env e1) {
+          require e1.msg.sender != currentContract;
+          require alice != bob;
+        }
+        preserved transfer(address to, uint256 amount) with (env e2) {
+            require (e2.msg.sender == alice && to == bob) || (
+                e2.msg.sender == bob && to == alice
+            );
+            require balanceOf(e2.msg.sender) >= amount;
+        }
+        preserved transferFrom(address from, address to, uint256 amount) with (env e3) {
+            require (from == alice && to == bob) || (from == bob && to == alice);
+            require balanceOf(from) >= amount;
+        }
+        preserved withdraw(uint256 amount) with (env e4) {
+            require e4.msg.sender == alice || e4.msg.sender == bob;
+            require balanceOf(e4.msg.sender) >= amount;
+            require nativeBalances[currentContract] >= amount;
+        }
+    }
+
 /*//////////////////////////////////////////////////////////////
                              RULES
 //////////////////////////////////////////////////////////////*/
