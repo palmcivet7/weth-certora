@@ -79,28 +79,6 @@ invariant solvencyDeposits()
         }
     }
 
-invariant singleDepositorBalanceLteTotalSupply(address account)
-    balanceOf(account) <= totalSupply()
-    {
-        preserved with (env e1) {
-          require e1.msg.sender != currentContract;
-        }
-        preserved transfer(address to, uint256 amount) with (env e2) {
-            require e2.msg.sender == account;
-            require balanceOf(e2.msg.sender) >= amount;
-        }
-        preserved transferFrom(address from, address to, uint256 amount) with (env e3) {
-            require from == account;
-            require balanceOf(from) >= amount;
-            if (e3.msg.sender != from) require allowance(from, e3.msg.sender) >= amount;
-        }
-        preserved withdraw(uint256 amount) with (env e4) {
-            require e4.msg.sender == account;
-            require balanceOf(e4.msg.sender) >= amount;
-            require nativeBalances[currentContract] >= amount;
-        }
-    }
-
 invariant depositorBalancesLteTotalSupply(address alice, address bob)
     balanceOf(alice) + balanceOf(bob) <= to_mathint(totalSupply())
     {
@@ -109,13 +87,14 @@ invariant depositorBalancesLteTotalSupply(address alice, address bob)
           require alice != bob;
         }
         preserved transfer(address to, uint256 amount) with (env e2) {
-            require (e2.msg.sender == alice && to == bob) || (
-                e2.msg.sender == bob && to == alice
-            );
+            require e2.msg.sender == alice || e2.msg.sender == bob;
+            require to == alice || to == bob;
             require balanceOf(e2.msg.sender) >= amount;
         }
         preserved transferFrom(address from, address to, uint256 amount) with (env e3) {
-            require (from == alice && to == bob) || (from == bob && to == alice);
+            require from == alice || from == bob;
+            require to == alice || to == bob;
+            if (e3.msg.sender != from) require allowance(from, e3.msg.sender) >= amount;
             require balanceOf(from) >= amount;
         }
         preserved withdraw(uint256 amount) with (env e4) {
