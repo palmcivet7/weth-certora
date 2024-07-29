@@ -47,6 +47,9 @@ ghost mathint g_withdrawSum {
     init_state axiom g_withdrawSum == 0;
 }
 
+// a ghost tracking the number of changes of balances
+// check that only two balances are changed at a time
+
 /*//////////////////////////////////////////////////////////////
                              HOOKS
 //////////////////////////////////////////////////////////////*/
@@ -76,6 +79,7 @@ invariant solvencyDeposits()
     {
         preserved with (env e) {
           require e.msg.sender != currentContract;
+          requireInvariant totalSupplyIsSumOfBalances();
         }
     }
 
@@ -85,6 +89,7 @@ invariant depositorBalancesLteTotalSupply(address alice, address bob)
         preserved with (env e1) {
           require e1.msg.sender != currentContract;
           require alice != bob;
+          requireInvariant solvencyDeposits();
         }
         preserved transfer(address to, uint256 amount) with (env e2) {
             require e2.msg.sender == alice || e2.msg.sender == bob;
