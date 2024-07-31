@@ -114,6 +114,8 @@ invariant depositorBalancesLteTotalSupply(address alice, address bob)
 //////////////////////////////////////////////////////////////*/
 /// @notice transfer must move `amount` tokens from the sender's account to `recipient`
 rule transferIntegrity(address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+    
     env e;
     require e.msg.sender != currentContract;
     address sender = e.msg.sender;
@@ -136,6 +138,8 @@ rule transferIntegrity(address recipient, uint amount) {
 
 /// @notice transfer reverts if sender's balance is too small
 rule transferReverts(address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+
     env e;
     require e.msg.sender != currentContract;
     require balanceOf(e.msg.sender) < amount;
@@ -146,6 +150,8 @@ rule transferReverts(address recipient, uint amount) {
 
 /// @notice transfer must not revert unless the sender doesn't have enough funds
 rule transferDoesntRevert(address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+    
     env e;
     require e.msg.sender != currentContract;
     require e.msg.sender != ZERO_ADDRESS();
@@ -160,6 +166,8 @@ rule transferDoesntRevert(address recipient, uint amount) {
 
 /// @notice transferFrom must move `amount` tokens from the sender's account to `recipient`
 rule transferFromIntegrity(address owner, address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+
     env e;
     require e.msg.sender != currentContract;
     require balanceOf(owner) >= amount;
@@ -183,6 +191,8 @@ rule transferFromIntegrity(address owner, address recipient, uint amount) {
 
 /// @notice transferFrom reverts if owner's balance is too small
 rule transferFromReverts(address owner, address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+
     env e;
     require e.msg.sender != currentContract;
     require balanceOf(owner) < amount;
@@ -194,6 +204,8 @@ rule transferFromReverts(address owner, address recipient, uint amount) {
 
 /// @notice transferfrom must not revert unless the owner doesn't have enough funds
 rule transferFromDoesntRevert(address owner, address recipient, uint amount) {
+    requireInvariant totalSupplyIsSumOfBalances();
+
     env e;
     require e.msg.sender != currentContract;
     require owner != ZERO_ADDRESS();
@@ -209,6 +221,8 @@ rule transferFromDoesntRevert(address owner, address recipient, uint amount) {
 
 /// @notice only the owner of the token can approve it for spending
 rule allowanceIntegrity(address owner, address spender) {
+    requireInvariant totalSupplyIsSumOfBalances();
+
     env e;
     method f;
     calldataarg args;
@@ -225,6 +239,8 @@ rule allowanceIntegrity(address owner, address spender) {
 
 /// @notice balance amounts should only decrease if transfers or withdraws happen
 rule balanceOfIntegrity(address owner) {
+    requireInvariant totalSupplyIsSumOfBalances();
+    
     env e;
     method f;
     calldataarg args;
