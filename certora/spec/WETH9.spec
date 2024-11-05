@@ -24,13 +24,27 @@ definition cantDecreaseAllowance(method f) returns bool =
 definition canDecreaseBalance(method f) returns bool = 
 	f.selector == sig:transfer(address,uint256).selector ||
 	f.selector == sig:transferFrom(address,address,uint256).selector ||
-    f.selector == sig:withdraw(uint).selector;
+    f.selector == sig:withdraw(uint256).selector;
 
 definition cantDecreaseBalance(method f) returns bool = 
 	f.selector != sig:transfer(address,uint256).selector ||
 	f.selector != sig:transferFrom(address,address,uint256).selector ||
-    f.selector != sig:withdraw(uint).selector;
+    f.selector != sig:withdraw(uint256).selector;
 
+definition cantChangeBalance(method f) returns bool = 
+	f.selector != sig:transfer(address,uint256).selector ||
+	f.selector != sig:transferFrom(address,address,uint256).selector ||
+    f.selector != sig:withdraw(uint256).selector ||
+    f.selector != sig:deposit().selector;
+
+definition canTransfer(method f) returns bool =
+    f.selector == sig:transfer(address,uint256).selector ||
+	f.selector == sig:transferFrom(address,address,uint256).selector;
+
+definition depositOrWithdraw(method f) returns bool =
+    f.selector == sig:withdraw(uint256).selector ||
+    f.selector == sig:deposit().selector ||
+    f.isFallback;
 
 /*//////////////////////////////////////////////////////////////
                              GHOSTS
@@ -47,8 +61,9 @@ ghost mathint g_withdrawSum {
     init_state axiom g_withdrawSum == 0;
 }
 
-// a ghost tracking the number of changes of balances
-// check that only two balances are changed at a time
+ghost mathint g_balanceChanges {
+    init_state axiom g_balanceChanges == 0;
+}
 
 /*//////////////////////////////////////////////////////////////
                              HOOKS
@@ -61,6 +76,8 @@ hook Sstore balanceOf[KEY address addr] uint256 newValue (uint256 oldValue) {
     g_sumOfBalances = g_sumOfBalances - to_mathint(oldValue) + to_mathint(newValue);
     if (newValue > oldValue) g_depositSum = g_depositSum + to_mathint(newValue - oldValue);
     else g_withdrawSum = g_withdrawSum + to_mathint(oldValue - newValue);
+
+    g_balanceChanges = g_balanceChanges + 1;
 }
 
 /*//////////////////////////////////////////////////////////////
@@ -252,4 +269,21 @@ rule balanceOfIntegrity(address owner) {
 
     assert endingBalance < startingBalance => canDecreaseBalance(f);
     assert endingBalance >= startingBalance => cantDecreaseBalance(f);
+}
+
+/// @notice ensure correct amount of balances are changed in any given transaction
+rule balanceChangeIntegrity() {
+    requireInvariant totalSupplyIsSumOfBalances();
+    require g_balanceChanges == 0;
+    
+    env e;
+    method f;
+    calldataarg args;
+    require e.msg.sender != currentContract;
+
+    f(e, args);
+
+    assert g_balanceChanges == 2 => canTransfer(f);
+    assert g_balanceChanges == 1 => depositOrWithdraw(f);
+    assert g_balanceChanges == 0 => cantChangeBalance(f);
 }
