@@ -12,8 +12,6 @@ methods {
 /*//////////////////////////////////////////////////////////////
                           DEFINITIONS
 //////////////////////////////////////////////////////////////*/
-definition ZERO_ADDRESS() returns address = 0x0000000000000000000000000000000000000000;
-
 definition canIncreaseAllowance(method f) returns bool = 
 	f.selector == sig:approve(address,uint256).selector;
 
@@ -171,8 +169,8 @@ rule transferDoesntRevert(address recipient, uint amount) {
     
     env e;
     require e.msg.sender != currentContract;
-    require e.msg.sender != ZERO_ADDRESS();
-    require recipient != ZERO_ADDRESS();
+    require e.msg.sender != 0;
+    require recipient != 0;
     require e.msg.value == 0;
     require balanceOf(e.msg.sender) >= amount;
     require balanceOf(recipient) + amount < max_uint;
@@ -225,8 +223,8 @@ rule transferFromDoesntRevert(address owner, address recipient, uint amount) {
 
     env e;
     require e.msg.sender != currentContract;
-    require owner != ZERO_ADDRESS();
-    require recipient != ZERO_ADDRESS();
+    require owner != 0;
+    require recipient != 0;
     require e.msg.value == 0;
     require balanceOf(owner) >= amount;
     require balanceOf(recipient) + amount < max_uint;
